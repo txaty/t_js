@@ -37,27 +37,28 @@
 
 typedef uint32_t jsoff_t;
 
-struct js {
-  const char *code;  // Currently parsed code snippet
-  char errmsg[36];   // Error message placeholder
-  uint8_t tok;       // Last parsed token value
-  uint8_t flags;     // Execution flags, see F_* enum below
-  uint16_t lev;      // Recursion level
-  jsoff_t clen;      // Code snippet length
-  jsoff_t pos;       // Current parsing position
-  jsoff_t toff;      // Offset of the last parsed token
-  jsoff_t tlen;      // Length of the last parsed token
-  jsval_t tval;      // Holds last parsed numeric or string literal value
-  jsval_t scope;     // Current scope
-#define F_NOEXEC 1   // Parse code, but not execute
-#define F_LOOP 2     // We're inside the loop
-#define F_CALL 4     // We're inside a function call
-#define F_BREAK 8    // Exit the loop
-#define F_RETURN 16  // Return has been executed
-  uint8_t *mem;      // Available JS memory
-  jsoff_t size;      // Memory size
-  jsoff_t brk;       // Current mem usage boundary
-  jsoff_t ncbs;      // Number of FFI-ed C "userdata" callback pointers
+struct js
+{
+  const char *code; // Currently parsed code snippet
+  char errmsg[36];  // Error message placeholder
+  uint8_t tok;      // Last parsed token value
+  uint8_t flags;    // Execution flags, see F_* enum below
+  uint16_t lev;     // Recursion level
+  jsoff_t clen;     // Code snippet length
+  jsoff_t pos;      // Current parsing position
+  jsoff_t toff;     // Offset of the last parsed token
+  jsoff_t tlen;     // Length of the last parsed token
+  jsval_t tval;     // Holds last parsed numeric or string literal value
+  jsval_t scope;    // Current scope
+#define F_NOEXEC 1  // Parse code, but not execute
+#define F_LOOP 2    // We're inside the loop
+#define F_CALL 4    // We're inside a function call
+#define F_BREAK 8   // Exit the loop
+#define F_RETURN 16 // Return has been executed
+  uint8_t *mem;     // Available JS memory
+  jsoff_t size;     // Memory size
+  jsoff_t brk;      // Current mem usage boundary
+  jsoff_t ncbs;     // Number of FFI-ed C "userdata" callback pointers
 };
 
 // A JS memory stores diffenent entities: objects, properties, strings
@@ -75,7 +76,7 @@ struct js {
 //
 // FFI userdata callback pointers "cbs" are placed past js.size. Since they
 // are passed to the user's C code, they stay constant and are not GC-ed
-#define MARK ~(((jsoff_t) ~0) >> 1)  // Entity deletion marker
+#define MARK ~(((jsoff_t)~0) >> 1) // Entity deletion marker
 
 // clang-format off
 enum { 
@@ -186,10 +187,12 @@ static jsval_t js_stmt(struct js *js, uint8_t etok);
 static jsval_t do_op(struct js *, uint8_t op, jsval_t l, jsval_t r);
 
 // Stringify JS object
-static size_t strobj(struct js *js, jsval_t obj, char *buf, size_t len) {
+static size_t strobj(struct js *js, jsval_t obj, char *buf, size_t len)
+{
   size_t n = snprintf(buf, len, "%s", "{");
-  jsoff_t next = loadoff(js, vdata(obj)) & ~3;  // Load first prop offset
-  while (next < js->brk && next != 0) {         // Iterate over props
+  jsoff_t next = loadoff(js, vdata(obj)) & ~3; // Load first prop offset
+  while (next < js->brk && next != 0)
+  { // Iterate over props
     jsoff_t koff = loadoff(js, next + sizeof(next));
     jsval_t val = loadval(js, next + sizeof(next) + sizeof(koff));
     // printf("PROP %u, koff %u\n", next & ~3, koff);
@@ -197,41 +200,47 @@ static size_t strobj(struct js *js, jsval_t obj, char *buf, size_t len) {
     n += tostr(js, mkval(T_STR, koff), buf + n, len - n);
     n += snprintf(buf + n, len - n, "%s", ":");
     n += tostr(js, val, buf + n, len - n);
-    next = loadoff(js, next) & ~3;  // Load next prop offset
+    next = loadoff(js, next) & ~3; // Load next prop offset
   }
   return n + snprintf(buf + n, len - n, "%s", "}");
 }
 
 // Stringify numeric JS value
-static size_t strnum(jsval_t value, char *buf, size_t len) {
+static size_t strnum(jsval_t value, char *buf, size_t len)
+{
   double dv = tod(value), iv;
   const char *fmt = modf(dv, &iv) == 0.0 ? "%.17g" : "%g";
   return snprintf(buf, len, fmt, dv);
 }
 
 // Return mem offset and length of the JS string
-static jsoff_t vstr(struct js *js, jsval_t value, jsoff_t *len) {
+static jsoff_t vstr(struct js *js, jsval_t value, jsoff_t *len)
+{
   jsoff_t off = vdata(value);
-  if (len) *len = offtolen(loadoff(js, off));
+  if (len)
+    *len = offtolen(loadoff(js, off));
   return off + sizeof(off);
 }
 
 // Stringify string JS value
-static size_t strstring(struct js *js, jsval_t value, char *buf, size_t len) {
+static size_t strstring(struct js *js, jsval_t value, char *buf, size_t len)
+{
   jsoff_t n, off = vstr(js, value, &n);
   // printf("STRING: len %u, off %lu %zu\n", n, off - sizeof(off), len);
-  return snprintf(buf, len, "\"%.*s\"", (int) n, (char *) js->mem + off);
+  return snprintf(buf, len, "\"%.*s\"", (int)n, (char *)js->mem + off);
 }
 
 // Stringify JS function
-static size_t strfunc(struct js *js, jsval_t value, char *buf, size_t len) {
+static size_t strfunc(struct js *js, jsval_t value, char *buf, size_t len)
+{
   jsoff_t n, off = vstr(js, value, &n), isjs = (js->mem[off] == '(');
-  char *p = (char *) &js->mem[off];
-  return isjs ? snprintf(buf, len, "function%.*s", (int) n, p)  // JS function
-              : snprintf(buf, len, "\"%.*s\"", (int) n, p);     // C function
+  char *p = (char *)&js->mem[off];
+  return isjs ? snprintf(buf, len, "function%.*s", (int)n, p) // JS function
+              : snprintf(buf, len, "\"%.*s\"", (int)n, p);    // C function
 }
 
-static jsval_t js_err(struct js *js, const char *fmt, ...) {
+static jsval_t js_err(struct js *js, const char *fmt, ...)
+{
   va_list ap;
   size_t n = snprintf(js->errmsg, sizeof(js->errmsg), "%s", "ERROR: ");
   va_start(ap, fmt);
@@ -239,13 +248,14 @@ static jsval_t js_err(struct js *js, const char *fmt, ...) {
   va_end(ap);
   js->errmsg[sizeof(js->errmsg) - 1] = '\0';
   // printf("ERR: [%s]\n", js->errmsg);
-  js->pos = js->clen;  // We're done.. Jump to the end of code
+  js->pos = js->clen; // We're done.. Jump to the end of code
   js->tok = TOK_EOF;
   return mkval(T_ERR, 0);
 }
 
 // Stringify JS value into the given buffer
-static size_t tostr(struct js *js, jsval_t value, char *buf, size_t len) {
+static size_t tostr(struct js *js, jsval_t value, char *buf, size_t len)
+{
   // clang-format off
   switch (vtype(value)) {
     case T_UNDEF: return snprintf(buf, len, "%s", "undefined");
@@ -261,66 +271,80 @@ static size_t tostr(struct js *js, jsval_t value, char *buf, size_t len) {
 }
 
 // Stringify JS value into a free JS memory block
-const char *js_str(struct js *js, jsval_t value) {
+const char *js_str(struct js *js, jsval_t value)
+{
   // Leave jsoff_t placeholder between js->brk and a stringify buffer,
   // in case if next step is convert it into a JS variable
-  char *buf = (char *) &js->mem[js->brk + sizeof(jsoff_t)];
-  if (is_err(value)) return js->errmsg;
-  if (js->brk + sizeof(jsoff_t) >= js->size) return "";
+  char *buf = (char *)&js->mem[js->brk + sizeof(jsoff_t)];
+  if (is_err(value))
+    return js->errmsg;
+  if (js->brk + sizeof(jsoff_t) >= js->size)
+    return "";
   tostr(js, value, buf, js->size - js->brk - sizeof(jsoff_t));
   // printf("JSSTR: %d [%s]\n", vtype(value), buf);
   return buf;
 }
 
-static bool js_truthy(struct js *js, jsval_t v) {
+static bool js_truthy(struct js *js, jsval_t v)
+{
   uint8_t t = vtype(v);
   return (t == T_BOOL && vdata(v) != 0) || (t == T_NUM && tod(v) != 0.0) ||
          (t == T_OBJ || t == T_FUNC) || (t == T_STR && vstrlen(js, v) > 0);
 }
 
-static jsoff_t js_alloc(struct js *js, size_t size) {
+static jsoff_t js_alloc(struct js *js, size_t size)
+{
   jsoff_t ofs = js->brk;
-  size = align32((jsoff_t) size);  // 4-byte align, (n + k - 1) / k * k
-  if (js->brk + size > js->size) return ~(jsoff_t) 0;
-  js->brk += (jsoff_t) size;
+  size = align32((jsoff_t)size); // 4-byte align, (n + k - 1) / k * k
+  if (js->brk + size > js->size)
+    return ~(jsoff_t)0;
+  js->brk += (jsoff_t)size;
   return ofs;
 }
 
-static jsval_t mkentity(struct js *js, jsoff_t b, const void *buf, size_t len) {
+static jsval_t mkentity(struct js *js, jsoff_t b, const void *buf, size_t len)
+{
   jsoff_t ofs = js_alloc(js, len + sizeof(b));
-  if (ofs == (jsoff_t) ~0) return js_err(js, "oom");
+  if (ofs == (jsoff_t)~0)
+    return js_err(js, "oom");
   memcpy(&js->mem[ofs], &b, sizeof(b));
   // Using memmove - in case we're stringifying data from the free JS mem
-  if (buf != NULL) memmove(&js->mem[ofs + sizeof(b)], buf, len);
-  if ((b & 3) == T_STR) js->mem[ofs + sizeof(b) + len] = 0;  // 0-terminate
+  if (buf != NULL)
+    memmove(&js->mem[ofs + sizeof(b)], buf, len);
+  if ((b & 3) == T_STR)
+    js->mem[ofs + sizeof(b) + len] = 0; // 0-terminate
   // printf("MKE: %u @ %u type %d\n", js->brk - ofs, ofs, b & 3);
   return mkval(b & 3, ofs);
 }
 
-static jsval_t mkstr(struct js *js, const void *ptr, size_t len) {
+static jsval_t mkstr(struct js *js, const void *ptr, size_t len)
+{
   // printf("MKSTR: [%.*s] -> off %u\n", (int) len, (char *) ptr, js->brk);
   return mkentity(js, (jsoff_t)(((len + 1) << 2) | T_STR), ptr, len + 1);
 }
 
-static jsval_t mkobj(struct js *js, jsoff_t parent) {
+static jsval_t mkobj(struct js *js, jsoff_t parent)
+{
   return mkentity(js, 0 | T_OBJ, &parent, sizeof(parent));
 }
 
-static jsval_t setprop(struct js *js, jsval_t obj, jsval_t k, jsval_t v) {
-  jsoff_t koff = vdata(k);                    // Key offset
-  jsoff_t b, head = vdata(obj);               // Property list head
-  char buf[sizeof(koff) + sizeof(v)];         // Property memory layout
-  memcpy(&b, &js->mem[head], sizeof(b));      // Load current 1st prop offset
-  memcpy(buf, &koff, sizeof(koff));           // Initialize prop data: copy key
-  memcpy(buf + sizeof(koff), &v, sizeof(v));  // Copy value
-  jsoff_t brk = js->brk | T_OBJ;              // New prop offset
-  memcpy(&js->mem[head], &brk, sizeof(brk));  // Repoint head to the new prop
+static jsval_t setprop(struct js *js, jsval_t obj, jsval_t k, jsval_t v)
+{
+  jsoff_t koff = vdata(k);                   // Key offset
+  jsoff_t b, head = vdata(obj);              // Property list head
+  char buf[sizeof(koff) + sizeof(v)];        // Property memory layout
+  memcpy(&b, &js->mem[head], sizeof(b));     // Load current 1st prop offset
+  memcpy(buf, &koff, sizeof(koff));          // Initialize prop data: copy key
+  memcpy(buf + sizeof(koff), &v, sizeof(v)); // Copy value
+  jsoff_t brk = js->brk | T_OBJ;             // New prop offset
+  memcpy(&js->mem[head], &brk, sizeof(brk)); // Repoint head to the new prop
   // printf("PROP: %u -> %u\n", b, brk);
-  return mkentity(js, (b & ~3) | T_PROP, buf, sizeof(buf));  // Create new prop
+  return mkentity(js, (b & ~3) | T_PROP, buf, sizeof(buf)); // Create new prop
 }
 
 // Return T_OBJ/T_PROP/T_STR entity size based on the first word in memory
-static inline jsoff_t esize(jsoff_t w) {
+static inline jsoff_t esize(jsoff_t w)
+{
   // clang-format off
   switch (w & 3) {
     case T_OBJ:   return sizeof(jsoff_t) + sizeof(jsoff_t);
@@ -331,93 +355,122 @@ static inline jsoff_t esize(jsoff_t w) {
   // clang-format on
 }
 
-static bool is_mem_entity(uint8_t t) {
+static bool is_mem_entity(uint8_t t)
+{
   return t == T_OBJ || t == T_PROP || t == T_STR || t == T_FUNC;
 }
 
-static void js_fixup_offsets(struct js *js, jsoff_t start, jsoff_t size) {
-  for (jsoff_t n, v, off = 0; off < js->brk; off += n) {  // start from 0!
+static void js_fixup_offsets(struct js *js, jsoff_t start, jsoff_t size)
+{
+  for (jsoff_t n, v, off = 0; off < js->brk; off += n)
+  { // start from 0!
     v = loadoff(js, off);
     n = esize(v & ~MARK);
-    if (v & MARK) continue;  // To be deleted, don't bother
-    if ((v & 3) != T_OBJ && (v & 3) != T_PROP) continue;
-    if (v > start) saveoff(js, off, v - size);
-    if ((v & 3) == T_PROP) {
+    if (v & MARK)
+      continue; // To be deleted, don't bother
+    if ((v & 3) != T_OBJ && (v & 3) != T_PROP)
+      continue;
+    if (v > start)
+      saveoff(js, off, v - size);
+    if ((v & 3) == T_PROP)
+    {
       jsoff_t koff = loadoff(js, off + sizeof(off));
-      if (koff > start) saveoff(js, off + sizeof(off), koff - size);
+      if (koff > start)
+        saveoff(js, off + sizeof(off), koff - size);
       jsval_t val = loadval(js, off + sizeof(off) + sizeof(off));
-      if (is_mem_entity(vtype(val)) && vdata(val) > start) {
+      if (is_mem_entity(vtype(val)) && vdata(val) > start)
+      {
         // printf("MV %u %lu -> %lu\n", off, vdata(val), vdata(val) - size);
         saveval(js, off + sizeof(off) + sizeof(off),
                 mkval(vtype(val), vdata(val) - size));
       }
     }
   }
-  for (jsoff_t i = 0; i < js->ncbs; i++) {
+  for (jsoff_t i = 0; i < js->ncbs; i++)
+  {
     jsoff_t base = js->size + i * 3 * sizeof(jsoff_t) + sizeof(jsoff_t);
     jsoff_t o1 = loadoff(js, base), o2 = loadoff(js, base + sizeof(o1));
-    if (o1 > start) saveoff(js, base, o1 - size);
-    if (o2 > start) saveoff(js, base + sizeof(jsoff_t), o2 - size);
+    if (o1 > start)
+      saveoff(js, base, o1 - size);
+    if (o2 > start)
+      saveoff(js, base + sizeof(jsoff_t), o2 - size);
   }
   // Fixup js->scope
   jsoff_t off = vdata(js->scope);
-  if (off > start) js->scope = mkval(T_OBJ, off - size);
+  if (off > start)
+    js->scope = mkval(T_OBJ, off - size);
 }
 
-static void js_delete_marked_entities(struct js *js) {
-  for (jsoff_t n, v, off = 0; off < js->brk; off += n) {
+static void js_delete_marked_entities(struct js *js)
+{
+  for (jsoff_t n, v, off = 0; off < js->brk; off += n)
+  {
     v = loadoff(js, off);
     n = esize(v & ~MARK);
-    if (v & MARK) {  // This entity is marked for deletion, remove it
+    if (v & MARK)
+    { // This entity is marked for deletion, remove it
       // printf("DEL: %4u %d %x\n", off, v & 3, n);
       // assert(off + n <= js->brk);
       js_fixup_offsets(js, off, n);
       memmove(&js->mem[off], &js->mem[off + n], js->brk - off - n);
-      js->brk -= n;  // Shrink brk boundary by the size of deleted entity
-      n = 0;         // We shifted data, next iteration stay on this offset
+      js->brk -= n; // Shrink brk boundary by the size of deleted entity
+      n = 0;        // We shifted data, next iteration stay on this offset
     }
   }
 }
 
-static void js_mark_all_entities_for_deletion(struct js *js) {
-  for (jsoff_t v, off = 0; off < js->brk; off += esize(v)) {
+static void js_mark_all_entities_for_deletion(struct js *js)
+{
+  for (jsoff_t v, off = 0; off < js->brk; off += esize(v))
+  {
     v = loadoff(js, off);
     saveoff(js, off, v | MARK);
   }
 }
 
-static jsoff_t js_unmark_entity(struct js *js, jsoff_t off) {
+static jsoff_t js_unmark_entity(struct js *js, jsoff_t off)
+{
   jsoff_t v = loadoff(js, off);
-  if (v & MARK) {
+  if (v & MARK)
+  {
     saveoff(js, off, v & ~MARK);
     // printf("UNMARK %5u\n", off);
-    if ((v & 3) == T_OBJ) js_unmark_entity(js, v & ~(MARK | 3));
-    if ((v & 3) == T_PROP) {
-      js_unmark_entity(js, v & ~(MARK | 3));                 // Unmark next prop
-      js_unmark_entity(js, loadoff(js, off + sizeof(off)));  // Unmark key
+    if ((v & 3) == T_OBJ)
+      js_unmark_entity(js, v & ~(MARK | 3));
+    if ((v & 3) == T_PROP)
+    {
+      js_unmark_entity(js, v & ~(MARK | 3));                // Unmark next prop
+      js_unmark_entity(js, loadoff(js, off + sizeof(off))); // Unmark key
       jsval_t val = loadval(js, off + sizeof(off) + sizeof(off));
-      if (is_mem_entity(vtype(val))) js_unmark_entity(js, vdata(val));
+      if (is_mem_entity(vtype(val)))
+        js_unmark_entity(js, vdata(val));
     }
   }
   return v & ~(MARK | 3);
 }
 
-static void js_unmark_used_entities(struct js *js) {
-  for (jsval_t scope = js->scope;;) {
+static void js_unmark_used_entities(struct js *js)
+{
+  for (jsval_t scope = js->scope;;)
+  {
     js_unmark_entity(js, vdata(scope));
     jsoff_t off = loadoff(js, vdata(scope)) & ~3;
-    while (off < js->brk && off != 0) off = js_unmark_entity(js, off);
-    if (vdata(scope) == 0) break;  // Last (global) scope processed
+    while (off < js->brk && off != 0)
+      off = js_unmark_entity(js, off);
+    if (vdata(scope) == 0)
+      break; // Last (global) scope processed
     scope = upper(js, scope);
   }
-  for (jsoff_t i = 0; i < js->ncbs; i++) {
+  for (jsoff_t i = 0; i < js->ncbs; i++)
+  {
     jsoff_t base = js->size + i * 3 * sizeof(jsoff_t) + sizeof(jsoff_t);
     js_unmark_entity(js, loadoff(js, base));
     js_unmark_entity(js, loadoff(js, base + sizeof(jsoff_t)));
   }
 }
 
-void js_gc(struct js *js) {
+void js_gc(struct js *js)
+{
   // printf("GC RUN\n");
   js_mark_all_entities_for_deletion(js);
   js_unmark_used_entities(js);
@@ -425,27 +478,40 @@ void js_gc(struct js *js) {
 }
 
 // Skip whitespaces and comments
-static jsoff_t skiptonext(const char *code, jsoff_t len, jsoff_t n) {
+static jsoff_t skiptonext(const char *code, jsoff_t len, jsoff_t n)
+{
   // printf("SKIP: [%.*s]\n", len - n, &code[n]);
-  while (n < len) {
-    if (is_space(code[n])) {
+  while (n < len)
+  {
+    if (is_space(code[n]))
+    {
       n++;
-    } else if (n + 1 < len && code[n] == '/' && code[n + 1] == '/') {
-      for (n += 2; n < len && code[n] != '\n';) n++;
-    } else if (n + 3 < len && code[n] == '/' && code[n + 1] == '*') {
-      for (n += 4; n < len && (code[n - 2] != '*' || code[n - 1] != '/');) n++;
-    } else {
+    }
+    else if (n + 1 < len && code[n] == '/' && code[n + 1] == '/')
+    {
+      for (n += 2; n < len && code[n] != '\n';)
+        n++;
+    }
+    else if (n + 3 < len && code[n] == '/' && code[n + 1] == '*')
+    {
+      for (n += 4; n < len && (code[n - 2] != '*' || code[n - 1] != '/');)
+        n++;
+    }
+    else
+    {
       break;
     }
   }
   return n;
 }
 
-static bool streq(const char *buf, size_t len, const char *p, size_t n) {
+static bool streq(const char *buf, size_t len, const char *p, size_t n)
+{
   return n == len && memcmp(buf, p, len) == 0;
 }
 
-static uint8_t parsekeyword(const char *buf, size_t len) {
+static uint8_t parsekeyword(const char *buf, size_t len)
+{
   // clang-format off
   switch (buf[0]) {
     case 'b': if (streq("break", 5, buf, len)) return TOK_BREAK; break;
@@ -468,15 +534,19 @@ static uint8_t parsekeyword(const char *buf, size_t len) {
   return TOK_IDENTIFIER;
 }
 
-static uint8_t parseident(const char *buf, jsoff_t len, jsoff_t *tlen) {
-  if (is_ident_begin(buf[0])) {
-    while (*tlen < len && is_ident_continue(buf[*tlen])) (*tlen)++;
+static uint8_t parseident(const char *buf, jsoff_t len, jsoff_t *tlen)
+{
+  if (is_ident_begin(buf[0]))
+  {
+    while (*tlen < len && is_ident_continue(buf[*tlen]))
+      (*tlen)++;
     return parsekeyword(buf, *tlen);
   }
   return TOK_ERR;
 }
 
-static uint8_t nexttok(struct js *js) {
+static uint8_t nexttok(struct js *js)
+{
   js->tok = TOK_ERR;
   js->toff = js->pos = skiptonext(js->code, js->clen, js->pos);
   js->tlen = 0;
@@ -537,166 +607,213 @@ static uint8_t nexttok(struct js *js) {
   return js->tok;
 }
 
-static uint8_t lookahead(struct js *js) {
+static uint8_t lookahead(struct js *js)
+{
   uint8_t tok = nexttok(js);
   js->pos -= js->tlen;
   return tok;
 }
 
 // Bubble sort operators by their priority. TOK_* enum is already sorted
-static void sortops(uint8_t *ops, int nops, jsval_t *stk) {
+static void sortops(uint8_t *ops, int nops, jsval_t *stk)
+{
   uint8_t prios[] = {19, 19, 17, 17, 16, 16, 16, 16, 16, 15, 14, 14, 14, 13, 13,
-                     12, 12, 12, 11, 11, 11, 11, 10, 10, 9,  8,  7,  6,  5,  4,
-                     4,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  1};
+                     12, 12, 12, 11, 11, 11, 11, 10, 10, 9, 8, 7, 6, 5, 4,
+                     4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1};
   // printf("PRIO: %d\n", prios[TOK_PLUS - TOK_DOT]);
-  for (bool done = false; done == false;) {
+  for (bool done = false; done == false;)
+  {
     done = true;
-    for (int i = 0; i + 1 < nops; i++) {
+    for (int i = 0; i + 1 < nops; i++)
+    {
       uint8_t o1 = vdata(stk[ops[i]]) & 255, o2 = vdata(stk[ops[i + 1]]) & 255;
       uint8_t a = prios[o1 - TOK_DOT], b = prios[o2 - TOK_DOT], tmp = ops[i];
       bool swap = a < b;
-      if (o1 == o2 && is_right_assoc(o1) && ops[i] < ops[i + 1]) swap = 1;
-      if (swap) ops[i] = ops[i + 1], ops[i + 1] = tmp, done = false;
+      if (o1 == o2 && is_right_assoc(o1) && ops[i] < ops[i + 1])
+        swap = 1;
+      if (swap)
+        ops[i] = ops[i + 1], ops[i + 1] = tmp, done = false;
     }
   }
 }
 
-static void mkscope(struct js *js) {
+static void mkscope(struct js *js)
+{
   assert((js->flags & F_NOEXEC) == 0);
   jsoff_t prev = vdata(js->scope);
   js->scope = mkobj(js, prev);
   // printf("ENTER SCOPE %u, prev %u\n", (jsoff_t) vdata(js->scope), prev);
 }
 
-static void delscope(struct js *js) {
+static void delscope(struct js *js)
+{
   js->scope = upper(js, js->scope);
   // printf("EXIT  SCOPE %u\n", (jsoff_t) vdata(js->scope));
 }
 
-static jsval_t js_block(struct js *js, bool create_scope) {
+static jsval_t js_block(struct js *js, bool create_scope)
+{
   jsval_t res = mkval(T_UNDEF, 0);
   jsoff_t brk1 = js->brk;
-  if (create_scope) mkscope(js);  // Enter new scope
+  if (create_scope)
+    mkscope(js); // Enter new scope
   jsoff_t brk2 = js->brk;
-  while (js->tok != TOK_EOF && js->tok != TOK_RBRACE) {
+  while (js->tok != TOK_EOF && js->tok != TOK_RBRACE)
+  {
     js->pos = skiptonext(js->code, js->clen, js->pos);
-    if (js->pos < js->clen && js->code[js->pos] == '}') break;
+    if (js->pos < js->clen && js->code[js->pos] == '}')
+      break;
     res = js_stmt(js, TOK_RBRACE);
     // printf(" blstmt [%.*s]\n", js->pos - pos, &js->code[pos]);
   }
-  if (js->pos < js->clen && js->code[js->pos] == '}') js->pos++;
+  if (js->pos < js->clen && js->code[js->pos] == '}')
+    js->pos++;
   // printf("BLOCKEND [%.*s]\n", js->pos - pos, &js->code[pos]);
-  if (create_scope) delscope(js);       // Exit scope
-  if (js->brk == brk2) js->brk = brk1;  // Fast scope GC
+  if (create_scope)
+    delscope(js); // Exit scope
+  if (js->brk == brk2)
+    js->brk = brk1; // Fast scope GC
   return res;
 }
 
-static jsval_t js_eval_nogc(struct js *js, const char *buf, jsoff_t len) {
+static jsval_t js_eval_nogc(struct js *js, const char *buf, jsoff_t len)
+{
   jsval_t res = mkval(T_UNDEF, 0);
   js->tok = TOK_ERR;
   js->code = buf;
   js->clen = len;
   js->pos = 0;
-  while (js->tok != TOK_EOF && !is_err(res)) {
+  while (js->tok != TOK_EOF && !is_err(res))
+  {
     js->pos = skiptonext(js->code, js->clen, js->pos);
-    if (js->pos >= js->clen) break;
+    if (js->pos >= js->clen)
+      break;
     res = js_stmt(js, TOK_SEMICOLON);
   }
   return res;
 }
 
-static jsval_t resolveprop(struct js *js, jsval_t v) {
-  if (vtype(v) != T_PROP) return v;
+static jsval_t resolveprop(struct js *js, jsval_t v)
+{
+  if (vtype(v) != T_PROP)
+    return v;
   v = loadval(js, vdata(v) + sizeof(jsoff_t) + sizeof(jsoff_t));
   return resolveprop(js, v);
 }
 
-static jsval_t assign(struct js *js, jsval_t lhs, jsval_t val) {
+static jsval_t assign(struct js *js, jsval_t lhs, jsval_t val)
+{
   saveval(js, (vdata(lhs) & ~3) + sizeof(jsoff_t) + sizeof(jsoff_t), val);
   return lhs;
 }
 
-static jsval_t do_assign_op(struct js *js, uint8_t op, jsval_t l, jsval_t r) {
+static jsval_t do_assign_op(struct js *js, uint8_t op, jsval_t l, jsval_t r)
+{
   uint8_t m[] = {TOK_PLUS, TOK_MINUS, TOK_MUL, TOK_DIV, TOK_REM, TOK_SHL,
-                 TOK_SHR,  TOK_ZSHR,  TOK_AND, TOK_XOR, TOK_OR};
+                 TOK_SHR, TOK_ZSHR, TOK_AND, TOK_XOR, TOK_OR};
   jsval_t res = do_op(js, m[op - TOK_PLUS_ASSIGN], resolveprop(js, l), r);
   return assign(js, l, res);
 }
 
 // Seach for property in a single object
-static jsoff_t lkp(struct js *js, jsval_t obj, const char *buf, size_t len) {
-  jsoff_t off = loadoff(js, vdata(obj)) & ~3;  // Load first prop offset
+static jsoff_t lkp(struct js *js, jsval_t obj, const char *buf, size_t len)
+{
+  jsoff_t off = loadoff(js, vdata(obj)) & ~3; // Load first prop offset
   // printf("LKP: %lu %u [%.*s]\n", vdata(obj), off, (int) len, buf);
-  while (off < js->brk && off != 0) {  // Iterate over props
+  while (off < js->brk && off != 0)
+  { // Iterate over props
     jsoff_t koff = loadoff(js, off + sizeof(off));
     jsoff_t klen = (loadoff(js, koff) >> 2) - 1;
-    const char *p = (char *) &js->mem[koff + sizeof(koff)];
+    const char *p = (char *)&js->mem[koff + sizeof(koff)];
     // printf("  %u %u[%.*s]\n", off, (int) klen, (int) klen, p);
-    if (streq(buf, len, p, klen)) return off;  // Found !
-    off = loadoff(js, off) & ~3;               // Load next prop offset
+    if (streq(buf, len, p, klen))
+      return off;                // Found !
+    off = loadoff(js, off) & ~3; // Load next prop offset
   }
-  return 0;  // Not found
+  return 0; // Not found
 }
 
 // Lookup variable in the scope chain
-static jsval_t lookup(struct js *js, const char *buf, size_t len) {
-  for (jsval_t scope = js->scope;;) {
+static jsval_t lookup(struct js *js, const char *buf, size_t len)
+{
+  for (jsval_t scope = js->scope;;)
+  {
     jsoff_t off = lkp(js, scope, buf, len);
-    if (off != 0) return mkval(T_PROP, off);
-    if (vdata(scope) == 0) break;
+    if (off != 0)
+      return mkval(T_PROP, off);
+    if (vdata(scope) == 0)
+      break;
     scope = mkval(T_OBJ, loadoff(js, vdata(scope) + sizeof(jsoff_t)));
   }
-  return js_err(js, "'%.*s' not found", (int) len, buf);
+  return js_err(js, "'%.*s' not found", (int)len, buf);
 }
 
-static jsval_t do_string_op(struct js *js, uint8_t op, jsval_t l, jsval_t r) {
+static jsval_t do_string_op(struct js *js, uint8_t op, jsval_t l, jsval_t r)
+{
   jsoff_t n1, off1 = vstr(js, l, &n1);
   jsoff_t n2, off2 = vstr(js, r, &n2);
-  if (op == TOK_PLUS) {
+  if (op == TOK_PLUS)
+  {
     jsval_t res = mkstr(js, NULL, n1 + n2);
-    if (vtype(res) == T_STR) {
+    if (vtype(res) == T_STR)
+    {
       jsoff_t n, off = vstr(js, res, &n);
       memmove(&js->mem[off], &js->mem[off1], n1);
       memmove(&js->mem[off + n1], &js->mem[off2], n2);
     }
     return res;
-  } else if (op == TOK_EQ) {
+  }
+  else if (op == TOK_EQ)
+  {
     bool eq = n1 == n2 && memcmp(&js->mem[off1], &js->mem[off2], n1) == 0;
     return mkval(T_BOOL, eq ? 1 : 0);
-  } else if (op == TOK_NE) {
+  }
+  else if (op == TOK_NE)
+  {
     bool eq = n1 == n2 && memcmp(&js->mem[off1], &js->mem[off2], n1) == 0;
     return mkval(T_BOOL, eq ? 0 : 1);
-  } else {
+  }
+  else
+  {
     return js_err(js, "bad str op");
   }
 }
 
-static jsval_t do_dot_op(struct js *js, jsval_t l, jsval_t r) {
-  const char *ptr = (char *) &js->code[coderefoff(r)];
-  if (vtype(r) != T_CODEREF) return js_err(js, "ident expected");
+static jsval_t do_dot_op(struct js *js, jsval_t l, jsval_t r)
+{
+  const char *ptr = (char *)&js->code[coderefoff(r)];
+  if (vtype(r) != T_CODEREF)
+    return js_err(js, "ident expected");
   // Handle stringvalue.length
-  if (vtype(l) == T_STR && streq(ptr, codereflen(r), "length", 6)) {
+  if (vtype(l) == T_STR && streq(ptr, codereflen(r), "length", 6))
+  {
     return tov(offtolen(loadoff(js, vdata(l))));
   }
-  if (vtype(l) != T_OBJ) return js_err(js, "lookup in non-obj");
+  if (vtype(l) != T_OBJ)
+    return js_err(js, "lookup in non-obj");
   jsoff_t off = lkp(js, l, ptr, codereflen(r));
   return off == 0 ? mkval(T_UNDEF, 0) : mkval(T_PROP, off);
 }
 
-static jsval_t js_call_params(struct js *js) {
+static jsval_t js_call_params(struct js *js)
+{
   jsoff_t pos = js->pos;
   if (nexttok(js) == TOK_RPAREN)
     return mkcoderef(pos, js->pos - pos - js->tlen);
   js->pos -= js->tlen;
   uint8_t flags = js->flags;
   js->flags |= F_NOEXEC;
-  do {
+  do
+  {
     jsval_t res = js_expr(js, TOK_COMMA, TOK_RPAREN);
-    if (is_err(res)) return res;
-    if (vdata(res) == 0) js->tok = TOK_ERR;  // Expression had 0 tokens
+    if (is_err(res))
+      return res;
+    if (vdata(res) == 0)
+      js->tok = TOK_ERR; // Expression had 0 tokens
   } while (js->tok == TOK_COMMA);
   js->flags = flags;
-  if (js->tok != TOK_RPAREN) return js_err(js, "parse error");
+  if (js->tok != TOK_RPAREN)
+    return js_err(js, "parse error");
   return mkcoderef(pos, js->pos - pos - js->tlen);
 }
 
@@ -758,11 +875,15 @@ static jsval_t fficb4(jw_t w1, jw_t w2, jw_t w3, jw_t w4, jw_t w5, jw_t w6) { un
 static jsval_t fficb5(jw_t w1, jw_t w2, jw_t w3, jw_t w4, jw_t w5, jw_t w6) { union ffi_val args[6]; ffiinitcbargs(args, w1, w2, w3, w4, w5, w6); return fficb(w5, args); }
 static jsval_t fficb6(jw_t w1, jw_t w2, jw_t w3, jw_t w4, jw_t w5, jw_t w6) { union ffi_val args[6]; ffiinitcbargs(args, w1, w2, w3, w4, w5, w6); return fficb(w6, args); }
 // clang-format on
-static w6w_t setfficb(const char *decl, int *idx) {
+static w6w_t setfficb(const char *decl, int *idx)
+{
   w6w_t res = 0, cbs[] = {fficb1, fficb2, fficb3, fficb4, fficb5, fficb6};
-  for (size_t i = 1; decl[i] != '\0' && decl[i] != ']'; i++) {
-    if (i >= (sizeof(cbs) / sizeof(cbs[0]))) break;
-    if (decl[i] == 'u') res = cbs[i - 1];  //, printf("SET CB %zu\n", i - 1);
+  for (size_t i = 1; decl[i] != '\0' && decl[i] != ']'; i++)
+  {
+    if (i >= (sizeof(cbs) / sizeof(cbs[0])))
+      break;
+    if (decl[i] == 'u')
+      res = cbs[i - 1]; //, printf("SET CB %zu\n", i - 1);
     (*idx)++;
   }
   (*idx) += 2;
@@ -771,16 +892,20 @@ static w6w_t setfficb(const char *decl, int *idx) {
 #endif
 
 // Call native C function
-static jsval_t call_c(struct js *js, const char *fn, int fnlen, jsoff_t fnoff) {
+static jsval_t call_c(struct js *js, const char *fn, int fnlen, jsoff_t fnoff)
+{
   union ffi_val args[MAX_FFI_ARGS], res;
   jsoff_t cbp = 0;
   int n = 0, i, type = fn[0] == 'd' ? 1 : 0;
-  for (i = 1; i < fnlen && fn[i] != '@' && n < MAX_FFI_ARGS; i++) {
+  for (i = 1; i < fnlen && fn[i] != '@' && n < MAX_FFI_ARGS; i++)
+  {
     js->pos = skiptonext(js->code, js->clen, js->pos);
-    if (js->pos >= js->clen) return js_err(js, "bad arg %d", n + 1);
+    if (js->pos >= js->clen)
+      return js_err(js, "bad arg %d", n + 1);
     jsval_t v = resolveprop(js, js_expr(js, TOK_COMMA, TOK_RPAREN));
     // printf("  arg %d[%c] -> %s\n", n, fn[i], js_str(js, v));
-    if (fn[i] == 'd' || (fn[i] == 'j' && sizeof(jsval_t) > sizeof(jw_t))) {
+    if (fn[i] == 'd' || (fn[i] == 'j' && sizeof(jsval_t) > sizeof(jw_t)))
+    {
       type |= 1 << (n + 1);
     }
     uint8_t t = vtype(v);
@@ -854,16 +979,20 @@ static jsval_t call_c(struct js *js, const char *fn, int fnlen, jsoff_t fnoff) {
 ///////////////////////////////////////////////  C  FFI implementation end
 
 // Call JS function. 'fn' looks like this: "(a,b) { return a + b; }"
-static jsval_t call_js(struct js *js, const char *fn, int fnlen) {
+static jsval_t call_js(struct js *js, const char *fn, int fnlen)
+{
   int fnpos = 1;
-  mkscope(js);  // Create function call scope
+  mkscope(js); // Create function call scope
   // Loop over arguments list "(a, b)" and set scope variables
-  while (fnpos < fnlen) {
-    fnpos = skiptonext(fn, fnlen, fnpos);          // Skip to the identifier
-    if (fnpos < fnlen && fn[fnpos] == ')') break;  // Closing paren? break!
-    jsoff_t identlen = 0;                          // Identifier length
+  while (fnpos < fnlen)
+  {
+    fnpos = skiptonext(fn, fnlen, fnpos); // Skip to the identifier
+    if (fnpos < fnlen && fn[fnpos] == ')')
+      break;              // Closing paren? break!
+    jsoff_t identlen = 0; // Identifier length
     uint8_t tok = parseident(&fn[fnpos], fnlen - fnpos, &identlen);
-    if (tok != TOK_IDENTIFIER) break;
+    if (tok != TOK_IDENTIFIER)
+      break;
     // Here we have argument name
     // printf("  [%.*s] -> %u [%.*s] -> ", (int) identlen, &fn[fnpos], js->pos,
     //(int) js->clen, js->code);
@@ -875,44 +1004,54 @@ static jsval_t call_js(struct js *js, const char *fn, int fnlen) {
     // Set argument in the function scope
     setprop(js, js->scope, mkstr(js, &fn[fnpos], identlen), v);
     js->pos = skiptonext(js->code, js->clen, js->pos);
-    if (js->pos < js->clen && js->code[js->pos] == ',') js->pos++;
-    fnpos = skiptonext(fn, fnlen, fnpos + identlen);  // Skip past identifier
-    if (fnpos < fnlen && fn[fnpos] == ',') fnpos++;  // And skip comma
+    if (js->pos < js->clen && js->code[js->pos] == ',')
+      js->pos++;
+    fnpos = skiptonext(fn, fnlen, fnpos + identlen); // Skip past identifier
+    if (fnpos < fnlen && fn[fnpos] == ',')
+      fnpos++; // And skip comma
   }
-  if (fnpos < fnlen && fn[fnpos] == ')') fnpos++;  // Skip to the function body
-  fnpos = skiptonext(fn, fnlen, fnpos);            // Up to the opening brace
-  if (fnpos < fnlen && fn[fnpos] == '{') fnpos++;  // And skip the brace
-  jsoff_t n = fnlen - fnpos - 1;  // Function code with stripped braces
+  if (fnpos < fnlen && fn[fnpos] == ')')
+    fnpos++;                            // Skip to the function body
+  fnpos = skiptonext(fn, fnlen, fnpos); // Up to the opening brace
+  if (fnpos < fnlen && fn[fnpos] == '{')
+    fnpos++;                     // And skip the brace
+  jsoff_t n = fnlen - fnpos - 1; // Function code with stripped braces
   // printf("  %d. calling, %u [%.*s]\n", js->flags, n, (int) n, &fn[fnpos]);
-  js->flags = F_CALL;  // Mark we're in the function call
-  jsval_t res = js_eval_nogc(js, &fn[fnpos], n);         // Call function, no GC
-  if (!(js->flags & F_RETURN)) res = mkval(T_UNDEF, 0);  // Is return called?
-  delscope(js);                                          // Delete call scope
+  js->flags = F_CALL;                            // Mark we're in the function call
+  jsval_t res = js_eval_nogc(js, &fn[fnpos], n); // Call function, no GC
+  if (!(js->flags & F_RETURN))
+    res = mkval(T_UNDEF, 0); // Is return called?
+  delscope(js);              // Delete call scope
   return res;
 }
 
-static jsval_t do_call_op(struct js *js, jsval_t func, jsval_t args) {
-  if (vtype(func) != T_FUNC) return js_err(js, "calling non-function");
-  if (vtype(args) != T_CODEREF) return js_err(js, "bad call");
+static jsval_t do_call_op(struct js *js, jsval_t func, jsval_t args)
+{
+  if (vtype(func) != T_FUNC)
+    return js_err(js, "calling non-function");
+  if (vtype(args) != T_CODEREF)
+    return js_err(js, "bad call");
   jsoff_t fnlen, fnoff = vstr(js, func, &fnlen);
-  const char *fn = (const char *) &js->mem[fnoff];
-  const char *code = js->code;              // Save current parser state
-  jsoff_t clen = js->clen, pos = js->pos;   // code, position and code length
-  js->code = &js->code[coderefoff(args)];   // Point parser to args
-  js->clen = codereflen(args);              // Set args length
-  js->pos = skiptonext(js->code, js->clen, 0);  // Skip to 1st arg
+  const char *fn = (const char *)&js->mem[fnoff];
+  const char *code = js->code;                 // Save current parser state
+  jsoff_t clen = js->clen, pos = js->pos;      // code, position and code length
+  js->code = &js->code[coderefoff(args)];      // Point parser to args
+  js->clen = codereflen(args);                 // Set args length
+  js->pos = skiptonext(js->code, js->clen, 0); // Skip to 1st arg
   // printf("CALL [%.*s] -> %.*s\n", (int) js->clen, js->code, (int) fnlen, fn);
-  uint8_t tok = js->tok, flags = js->flags;  // Save flags
+  uint8_t tok = js->tok, flags = js->flags; // Save flags
   jsval_t res = fn[0] != '(' ? call_c(js, fn, fnlen, fnoff - sizeof(jsoff_t))
                              : call_js(js, fn, fnlen);
   // printf("  -> %s\n", js_str(js, res));
-  js->code = code, js->clen = clen, js->pos = pos;  // Restore parser
+  js->code = code, js->clen = clen, js->pos = pos; // Restore parser
   js->flags = flags, js->tok = tok;
   return res;
 }
 
-static jsval_t do_logical_or(struct js *js, jsval_t l, jsval_t r) {
-  if (js_truthy(js, l)) return mkval(T_BOOL, 1);
+static jsval_t do_logical_or(struct js *js, jsval_t l, jsval_t r)
+{
+  if (js_truthy(js, l))
+    return mkval(T_BOOL, 1);
   return mkval(T_BOOL, js_truthy(js, r) ? 1 : 0);
 }
 
@@ -964,118 +1103,173 @@ static jsval_t do_op(struct js *js, uint8_t op, jsval_t lhs, jsval_t rhs) {
 }
 // clang-format on
 
-static uint8_t getri(uint32_t mask, uint8_t ri) {
-  while (ri > 0 && (mask & (1 << ri))) ri--;
-  if (!(mask & (1 << ri))) ri++;
+static uint8_t getri(uint32_t mask, uint8_t ri)
+{
+  while (ri > 0 && (mask & (1 << ri)))
+    ri--;
+  if (!(mask & (1 << ri)))
+    ri++;
   return ri;
 }
 
-static jsval_t js_str_literal(struct js *js) {
-  uint8_t *in = (uint8_t *) &js->code[js->toff];
+static jsval_t js_str_literal(struct js *js)
+{
+  uint8_t *in = (uint8_t *)&js->code[js->toff];
   uint8_t *out = &js->mem[js->brk + sizeof(jsoff_t)];
   int n1 = 0, n2 = 0;
   // printf("STR %u %lu %lu\n", js->brk, js->tlen, js->clen);
-  if (js->brk + sizeof(jsoff_t) + js->tlen > js->size) return js_err(js, "oom");
-  while (n2++ + 2 < (int) js->tlen) {
-    if (in[n2] == '\\') {
-      if (in[n2 + 1] == in[0]) {
+  if (js->brk + sizeof(jsoff_t) + js->tlen > js->size)
+    return js_err(js, "oom");
+  while (n2++ + 2 < (int)js->tlen)
+  {
+    if (in[n2] == '\\')
+    {
+      if (in[n2 + 1] == in[0])
+      {
         out[n1++] = in[0];
-      } else if (in[n2 + 1] == 'n') {
+      }
+      else if (in[n2 + 1] == 'n')
+      {
         out[n1++] = '\n';
-      } else if (in[n2 + 1] == 't') {
+      }
+      else if (in[n2 + 1] == 't')
+      {
         out[n1++] = '\t';
-      } else if (in[n2 + 1] == 'r') {
+      }
+      else if (in[n2 + 1] == 'r')
+      {
         out[n1++] = '\r';
-      } else if (in[n2 + 1] == 'x' && is_xdigit(in[n2 + 2]) &&
-                 is_xdigit(in[n2 + 3])) {
+      }
+      else if (in[n2 + 1] == 'x' && is_xdigit(in[n2 + 2]) &&
+               is_xdigit(in[n2 + 3]))
+      {
         out[n1++] = unhex(in[n2 + 2]) << 4 | unhex(in[n2 + 3]);
         n2 += 2;
-      } else {
+      }
+      else
+      {
         return js_err(js, "bad str literal");
       }
       n2++;
-    } else {
+    }
+    else
+    {
       out[n1++] = js->code[js->toff + n2];
     }
   }
   return mkstr(js, NULL, n1);
 }
 
-static jsval_t js_obj_literal(struct js *js) {
+static jsval_t js_obj_literal(struct js *js)
+{
   uint8_t exe = !(js->flags & F_NOEXEC);
   // printf("OLIT1\n");
   jsval_t obj = exe ? mkobj(js, 0) : mkval(T_UNDEF, 0);
-  if (is_err(obj)) return obj;
-  while (nexttok(js) != TOK_RBRACE) {
-    if (js->tok != TOK_IDENTIFIER) return js_err(js, "parse error");
+  if (is_err(obj))
+    return obj;
+  while (nexttok(js) != TOK_RBRACE)
+  {
+    if (js->tok != TOK_IDENTIFIER)
+      return js_err(js, "parse error");
     size_t koff = js->toff, klen = js->tlen;
-    if (nexttok(js) != TOK_COLON) return js_err(js, "parse error");
+    if (nexttok(js) != TOK_COLON)
+      return js_err(js, "parse error");
     jsval_t val = js_expr(js, TOK_RBRACE, TOK_COMMA);
-    if (exe) {
+    if (exe)
+    {
       // printf("XXXX [%s] scope: %lu\n", js_str(js, val), vdata(js->scope));
-      if (is_err(val)) return val;
+      if (is_err(val))
+        return val;
       jsval_t key = mkstr(js, js->code + koff, klen);
-      if (is_err(key)) return key;
+      if (is_err(key))
+        return key;
       jsval_t res = setprop(js, obj, key, resolveprop(js, val));
-      if (is_err(res)) return res;
+      if (is_err(res))
+        return res;
     }
-    if (js->tok == TOK_RBRACE) break;
-    if (js->tok != TOK_COMMA) return js_err(js, "parse error");
+    if (js->tok == TOK_RBRACE)
+      break;
+    if (js->tok != TOK_COMMA)
+      return js_err(js, "parse error");
   }
   return obj;
 }
 
-static jsval_t js_func_literal(struct js *js) {
+static jsval_t js_func_literal(struct js *js)
+{
   jsoff_t pos = js->pos;
-  uint8_t flags = js->flags;  // Save current flags
-  if (nexttok(js) != TOK_LPAREN) return js_err(js, "parse error");
-  for (bool expect_ident = false; nexttok(js) != TOK_EOF; expect_ident = true) {
+  uint8_t flags = js->flags; // Save current flags
+  if (nexttok(js) != TOK_LPAREN)
+    return js_err(js, "parse error");
+  for (bool expect_ident = false; nexttok(js) != TOK_EOF; expect_ident = true)
+  {
     if (expect_ident && js->tok != TOK_IDENTIFIER)
       return js_err(js, "parse error");
-    if (js->tok == TOK_RPAREN) break;
-    if (js->tok != TOK_IDENTIFIER) return js_err(js, "parse error");
-    if (nexttok(js) == TOK_RPAREN) break;
-    if (js->tok != TOK_COMMA) return js_err(js, "parse error");
+    if (js->tok == TOK_RPAREN)
+      break;
+    if (js->tok != TOK_IDENTIFIER)
+      return js_err(js, "parse error");
+    if (nexttok(js) == TOK_RPAREN)
+      break;
+    if (js->tok != TOK_COMMA)
+      return js_err(js, "parse error");
   }
-  if (js->tok != TOK_RPAREN) return js_err(js, "parse error");
-  if (nexttok(js) != TOK_LBRACE) return js_err(js, "parse error");
-  js->flags |= F_NOEXEC;              // Set no-execution flag to parse the
-  jsval_t res = js_block(js, false);  // Skip function body - no exec
-  if (is_err(res)) return res;        // But fail short on parse error
-  js->flags = flags;                  // Restore flags
+  if (js->tok != TOK_RPAREN)
+    return js_err(js, "parse error");
+  if (nexttok(js) != TOK_LBRACE)
+    return js_err(js, "parse error");
+  js->flags |= F_NOEXEC;             // Set no-execution flag to parse the
+  jsval_t res = js_block(js, false); // Skip function body - no exec
+  if (is_err(res))
+    return res;      // But fail short on parse error
+  js->flags = flags; // Restore flags
   jsval_t str = mkstr(js, &js->code[pos], js->pos - pos);
   // printf("FUNC: %u [%.*s]\n", pos, js->pos - pos, &js->code[pos]);
   return mkval(T_FUNC, vdata(str));
 }
 
-static jsval_t js_expr(struct js *js, uint8_t etok, uint8_t etok2) {
-  jsval_t stk[JS_EXPR_MAX];                     // parsed values
-  uint8_t tok, ops[JS_EXPR_MAX], pt = TOK_ERR;  // operator indices
+static jsval_t js_expr(struct js *js, uint8_t etok, uint8_t etok2)
+{
+  jsval_t stk[JS_EXPR_MAX];                    // parsed values
+  uint8_t tok, ops[JS_EXPR_MAX], pt = TOK_ERR; // operator indices
   uint8_t n = 0, nops = 0, nuops = 0;
   // printf("E1 %d %d %d %u/%u\n", js->tok, etok, etok2, js->pos, js->clen);
-  while ((tok = nexttok(js)) != etok && tok != etok2 && tok != TOK_EOF) {
+  while ((tok = nexttok(js)) != etok && tok != etok2 && tok != TOK_EOF)
+  {
     // printf("E2 %d %d %d %u/%u\n", js->tok, etok, etok2, js->pos, js->clen);
-    if (tok == TOK_ERR) return js_err(js, "parse error");
-    if (n >= JS_EXPR_MAX) return js_err(js, "expr too deep");
+    if (tok == TOK_ERR)
+      return js_err(js, "parse error");
+    if (n >= JS_EXPR_MAX)
+      return js_err(js, "expr too deep");
     // Convert TOK_LPAREN to a function call TOK_CALL if required
-    if (tok == TOK_LPAREN && (n > 0 && !is_op(pt))) tok = TOK_CALL;
-    if (is_op(tok)) {
+    if (tok == TOK_LPAREN && (n > 0 && !is_op(pt)))
+      tok = TOK_CALL;
+    if (is_op(tok))
+    {
       // Convert this plus or minus to unary if required
-      if (tok == TOK_PLUS || tok == TOK_MINUS) {
+      if (tok == TOK_PLUS || tok == TOK_MINUS)
+      {
         bool convert =
             (n == 0) || (is_op(pt) && (!is_unary(pt) || is_right_assoc(pt)));
-        if (convert && tok == TOK_PLUS) tok = TOK_UPLUS;
-        if (convert && tok == TOK_MINUS) tok = TOK_UMINUS;
+        if (convert && tok == TOK_PLUS)
+          tok = TOK_UPLUS;
+        if (convert && tok == TOK_MINUS)
+          tok = TOK_UMINUS;
       }
       ops[nops++] = n;
-      stk[n++] = mkval(T_ERR, tok);  // Convert op into value and store
-      if (!is_unary(tok)) nuops++;   // Count non-unary ops
+      stk[n++] = mkval(T_ERR, tok); // Convert op into value and store
+      if (!is_unary(tok))
+        nuops++; // Count non-unary ops
       // For function calls, store arguments - but don't evaluate just yet
-      if (tok == TOK_CALL) {
+      if (tok == TOK_CALL)
+      {
         stk[n++] = js_call_params(js);
-        if (is_err(stk[n - 1])) return stk[n - 1];
+        if (is_err(stk[n - 1]))
+          return stk[n - 1];
       }
-    } else {
+    }
+    else
+    {
       // clang-format off
       switch (tok) {
         case TOK_IDENTIFIER:
@@ -1101,17 +1295,22 @@ static jsval_t js_expr(struct js *js, uint8_t etok, uint8_t etok2) {
       }
       // clang-format on
     }
-    if (!is_op(tok) && is_err(stk[n - 1])) return stk[n - 1];
+    if (!is_op(tok) && is_err(stk[n - 1]))
+      return stk[n - 1];
     pt = tok;
   }
   // printf("EE toks=%d ops=%d binary=%d\n", n, nops, nuops);
-  if (js->flags & F_NOEXEC) return mkval(T_UNDEF, n);  // pass n to the caller
-  if (n == 0) return mkval(T_UNDEF, 0);
-  if (n != nops + nuops + 1) return js_err(js, "bad expr");
-  sortops(ops, nops, stk);  // Sort operations by priority
+  if (js->flags & F_NOEXEC)
+    return mkval(T_UNDEF, n); // pass n to the caller
+  if (n == 0)
+    return mkval(T_UNDEF, 0);
+  if (n != nops + nuops + 1)
+    return js_err(js, "bad expr");
+  sortops(ops, nops, stk); // Sort operations by priority
   uint32_t mask = 0;
   // uint8_t nq = 0;  // Number of `?` ternary operations
-  for (int i = 0; i < nops; i++) {
+  for (int i = 0; i < nops; i++)
+  {
     uint8_t idx = ops[i], op = vdata(stk[idx]) & 255, ri = idx;
     bool unary = is_unary(op), rassoc = is_right_assoc(op);
     bool needleft = unary && rassoc ? false : true;
@@ -1119,128 +1318,172 @@ static jsval_t js_expr(struct js *js, uint8_t etok, uint8_t etok2) {
     jsval_t left = mkval(T_UNDEF, 0), right = mkval(T_UNDEF, 0);
     mask |= 1 << idx;
     // printf("  OP: %d idx %d %d%d\n", op, idx, needleft, needright);
-    if (needleft) {
-      if (idx < 1) return js_err(js, "bad expr");
+    if (needleft)
+    {
+      if (idx < 1)
+        return js_err(js, "bad expr");
       mask |= 1 << (idx - 1);
       ri = getri(mask, idx);
       left = stk[ri];
-      if (is_err(left)) return js_err(js, "bad expr");
+      if (is_err(left))
+        return js_err(js, "bad expr");
     }
-    if (needright) {
+    if (needright)
+    {
       mask |= 1 << (idx + 1);
-      if (idx + 1 >= n) return js_err(js, "bad expr");
+      if (idx + 1 >= n)
+        return js_err(js, "bad expr");
       right = stk[idx + 1];
-      if (is_err(right)) return js_err(js, "bad expr");
+      if (is_err(right))
+        return js_err(js, "bad expr");
     }
-    stk[ri] = do_op(js, op, left, right);       // Perform operation
-    if (is_err(stk[ri])) return stk[ri];        // Propagate error
+    stk[ri] = do_op(js, op, left, right); // Perform operation
+    if (is_err(stk[ri]))
+      return stk[ri]; // Propagate error
   }
   return stk[0];
 }
 
-static jsval_t js_let(struct js *js) {
+static jsval_t js_let(struct js *js)
+{
   uint8_t exe = !(js->flags & F_NOEXEC);
-  for (;;) {
+  for (;;)
+  {
     uint8_t tok = nexttok(js);
-    if (tok != TOK_IDENTIFIER) return js_err(js, "parse error");
+    if (tok != TOK_IDENTIFIER)
+      return js_err(js, "parse error");
     jsoff_t noff = js->toff, nlen = js->tlen;
-    char *name = (char *) &js->code[noff];
+    char *name = (char *)&js->code[noff];
     jsval_t v = mkval(T_UNDEF, 0);
     nexttok(js);
-    if (js->tok == TOK_ASSIGN) {
+    if (js->tok == TOK_ASSIGN)
+    {
       v = js_expr(js, TOK_COMMA, TOK_SEMICOLON);
-      if (is_err(v)) break;  // Propagate error if any
+      if (is_err(v))
+        break; // Propagate error if any
     }
-    if (exe) {
+    if (exe)
+    {
       if (lkp(js, js->scope, name, nlen) > 0)
-        return js_err(js, "'%.*s' already declared", (int) nlen, name);
+        return js_err(js, "'%.*s' already declared", (int)nlen, name);
       jsval_t x =
           setprop(js, js->scope, mkstr(js, name, nlen), resolveprop(js, v));
-      if (is_err(x)) return x;
+      if (is_err(x))
+        return x;
     }
-    if (js->tok == TOK_SEMICOLON || js->tok == TOK_EOF) break;  // Stop
-    if (js->tok != TOK_COMMA) return js_err(js, "parse error");
+    if (js->tok == TOK_SEMICOLON || js->tok == TOK_EOF)
+      break; // Stop
+    if (js->tok != TOK_COMMA)
+      return js_err(js, "parse error");
   }
   return mkval(T_UNDEF, 0);
 }
 
-static jsval_t js_block_or_stmt(struct js *js) {
+static jsval_t js_block_or_stmt(struct js *js)
+{
   js->pos = skiptonext(js->code, js->clen, js->pos);
-  if (js->pos < js->clen && js->code[js->pos] == '{') {
+  if (js->pos < js->clen && js->code[js->pos] == '{')
+  {
     js->pos++;
     return js_block(js, !(js->flags & F_NOEXEC));
-  } else {
+  }
+  else
+  {
     return resolveprop(js, js_stmt(js, TOK_SEMICOLON));
   }
 }
 
-static jsval_t js_if(struct js *js) {
-  if (nexttok(js) != TOK_LPAREN) return js_err(js, "parse error");
+static jsval_t js_if(struct js *js)
+{
+  if (nexttok(js) != TOK_LPAREN)
+    return js_err(js, "parse error");
   jsval_t cond = js_expr(js, TOK_RPAREN, TOK_EOF);
-  if (js->tok != TOK_RPAREN) return js_err(js, "parse error");
+  if (js->tok != TOK_RPAREN)
+    return js_err(js, "parse error");
   bool noexec = js->flags & F_NOEXEC;
   bool cond_true = js_truthy(js, cond);
-  if (!cond_true) js->flags |= F_NOEXEC;
+  if (!cond_true)
+    js->flags |= F_NOEXEC;
   jsval_t res = js_block_or_stmt(js);
-  if (!cond_true && !noexec) js->flags &= ~F_NOEXEC;
-  if (lookahead(js) == TOK_ELSE) {
+  if (!cond_true && !noexec)
+    js->flags &= ~F_NOEXEC;
+  if (lookahead(js) == TOK_ELSE)
+  {
     nexttok(js);
-    if (cond_true) js->flags |= F_NOEXEC;
+    if (cond_true)
+      js->flags |= F_NOEXEC;
     res = js_block_or_stmt(js);
-    if (cond_true && !noexec) js->flags &= ~F_NOEXEC;
+    if (cond_true && !noexec)
+      js->flags &= ~F_NOEXEC;
   }
   // printf("IF: else %d\n", lookahead(js) == TOK_ELSE);
   return res;
 }
 
-static jsval_t js_while(struct js *js) {
-  jsoff_t pos = js->pos - js->tlen;  // The beginning of `while` stmt
-  if (nexttok(js) != TOK_LPAREN) return js_err(js, "parse error");
+static jsval_t js_while(struct js *js)
+{
+  jsoff_t pos = js->pos - js->tlen; // The beginning of `while` stmt
+  if (nexttok(js) != TOK_LPAREN)
+    return js_err(js, "parse error");
   jsval_t cond = js_expr(js, TOK_RPAREN, TOK_EOF);
-  if (js->tok != TOK_RPAREN) return js_err(js, "parse error");
+  if (js->tok != TOK_RPAREN)
+    return js_err(js, "parse error");
   uint8_t flags = js->flags, exe = !(js->flags & F_NOEXEC);
   bool cond_true = js_truthy(js, cond);
-  if (exe) js->flags |= F_LOOP | (cond_true ? 0 : F_NOEXEC);
+  if (exe)
+    js->flags |= F_LOOP | (cond_true ? 0 : F_NOEXEC);
   jsval_t res = js_block_or_stmt(js);
   // printf("WHILE 2 %d %d\n", cond_true, js->flags);
   bool repeat = exe && !is_err(res) && cond_true && !(js->flags & F_BREAK);
-  js->flags = flags;          // Restore flags
-  if (repeat) js->pos = pos;  // Must loop. Jump back!
+  js->flags = flags; // Restore flags
+  if (repeat)
+    js->pos = pos; // Must loop. Jump back!
   // printf("WHILE %d\n", js_usage(js));
   return mkval(T_UNDEF, 0);
 }
 
-static jsval_t js_break(struct js *js) {
-  if (!(js->flags & F_LOOP)) return js_err(js, "not in loop");
-  if (!(js->flags & F_NOEXEC)) js->flags |= F_BREAK | F_NOEXEC;
+static jsval_t js_break(struct js *js)
+{
+  if (!(js->flags & F_LOOP))
+    return js_err(js, "not in loop");
+  if (!(js->flags & F_NOEXEC))
+    js->flags |= F_BREAK | F_NOEXEC;
   return mkval(T_UNDEF, 0);
 }
 
-static jsval_t js_continue(struct js *js) {
-  if (!(js->flags & F_LOOP)) return js_err(js, "not in loop");
+static jsval_t js_continue(struct js *js)
+{
+  if (!(js->flags & F_LOOP))
+    return js_err(js, "not in loop");
   js->flags |= F_NOEXEC;
   return mkval(T_UNDEF, 0);
 }
 
-static jsval_t js_return(struct js *js) {
+static jsval_t js_return(struct js *js)
+{
   uint8_t exe = !(js->flags & F_NOEXEC);
   // jsoff_t pos = js->pos;
   // printf("RET..\n");
-  if (exe && !(js->flags & F_CALL)) return js_err(js, "not in func");
-  if (nexttok(js) == TOK_SEMICOLON) return mkval(T_UNDEF, 0);
-  js->pos -= js->tlen;  // Go back
+  if (exe && !(js->flags & F_CALL))
+    return js_err(js, "not in func");
+  if (nexttok(js) == TOK_SEMICOLON)
+    return mkval(T_UNDEF, 0);
+  js->pos -= js->tlen; // Go back
   jsval_t result = js_expr(js, TOK_SEMICOLON, TOK_SEMICOLON);
-  if (exe) {
-    js->pos = js->clen;     // Shift to the end - exit the code snippet
-    js->flags |= F_RETURN;  // Tell caller we've executed
+  if (exe)
+  {
+    js->pos = js->clen;    // Shift to the end - exit the code snippet
+    js->flags |= F_RETURN; // Tell caller we've executed
   }
   // printf("RR %d [%.*s]\n", js->tok, js->pos - pos, &js->code[pos]);
   return resolveprop(js, result);
 }
 
-static jsval_t js_stmt(struct js *js, uint8_t etok) {
+static jsval_t js_stmt(struct js *js, uint8_t etok)
+{
   jsval_t res;
-  if (js->lev == 0) js_gc(js);  // Before top-level stmt, garbage collect
+  if (js->lev == 0)
+    js_gc(js); // Before top-level stmt, garbage collect
   js->lev++;
   // clang-format off
   switch (nexttok(js)) {
@@ -1269,72 +1512,91 @@ static jsval_t js_stmt(struct js *js, uint8_t etok) {
 }
 // clang-format on
 
-struct js *js_create(void *buf, size_t len) {
+struct js *js_create(void *buf, size_t len)
+{
   struct js *js = NULL;
-  if (len < sizeof(*js) + esize(T_OBJ)) return js;
-  memset(buf, 0, len);                      // Important!
-  js = (struct js *) buf;                   // struct js lives at the beginning
-  js->mem = (uint8_t *) (js + 1);           // Then goes memory for JS data
-  js->size = (jsoff_t)(len - sizeof(*js));  // JS memory size
-  js->scope = mkobj(js, 0);                 // Create global scope
+  if (len < sizeof(*js) + esize(T_OBJ))
+    return js;
+  memset(buf, 0, len);                     // Important!
+  js = (struct js *)buf;                   // struct js lives at the beginning
+  js->mem = (uint8_t *)(js + 1);           // Then goes memory for JS data
+  js->size = (jsoff_t)(len - sizeof(*js)); // JS memory size
+  js->scope = mkobj(js, 0);                // Create global scope
   return js;
 }
 
-jsval_t js_mkobj(struct js *js) {
+jsval_t js_mkobj(struct js *js)
+{
   return mkobj(js, 0);
 }
 
-jsval_t js_glob(struct js *js) {
-  (void) js;
+jsval_t js_glob(struct js *js)
+{
+  (void)js;
   return mkval(T_OBJ, 0);
 }
 
-void js_set(struct js *js, jsval_t obj, const char *key, jsval_t val) {
+void js_set(struct js *js, jsval_t obj, const char *key, jsval_t val)
+{
   is_err(setprop(js, obj, mkstr(js, key, strlen(key)), val));
 }
 
-int js_usage(struct js *js) {
+int js_usage(struct js *js)
+{
   return js->brk * 100 / js->size;
 }
 
-jsval_t js_import(struct js *js, uintptr_t fn, const char *signature) {
+jsval_t js_import(struct js *js, uintptr_t fn, const char *signature)
+{
   char buf[64];
   size_t n = snprintf(buf, sizeof(buf), "%s@%" PRIxPTR, signature, fn);
   jsval_t str = mkstr(js, buf, n);
   return mkval(T_FUNC, vdata(str));
 }
 
-jsval_t js_eval(struct js *js, const char *buf, size_t len) {
+jsval_t js_eval(struct js *js, const char *buf, size_t len)
+{
   // printf("EVAL: [%.*s]\n", (int) len, buf);
-  if (len == (size_t) ~0) len = strlen(buf);
-  return js_eval_nogc(js, buf, (jsoff_t) len);
+  if (len == (size_t)~0)
+    len = strlen(buf);
+  return js_eval_nogc(js, buf, (jsoff_t)len);
 }
 
 #ifdef JS_DUMP
-void js_dump(struct js *js) {
+void js_dump(struct js *js)
+{
   jsoff_t off = 0, v;
   printf("JS size %u, brk %u, callbacks: %u\n", js->size, js->brk, js->ncbs);
-  while (off < js->brk) {
+  while (off < js->brk)
+  {
     memcpy(&v, &js->mem[off], sizeof(v));
     printf(" %5u: ", off);
-    if ((v & 3) == T_OBJ) {
+    if ((v & 3) == T_OBJ)
+    {
       printf("OBJ %u %u\n", v & ~3, loadoff(js, off + sizeof(off)));
-    } else if ((v & 3) == T_PROP) {
+    }
+    else if ((v & 3) == T_PROP)
+    {
       jsoff_t koff = loadoff(js, off + sizeof(v));
       jsval_t val = loadval(js, off + sizeof(v) + sizeof(v));
       printf("PROP next %u, koff %u vtype %d vdata %lu\n", v & ~3, koff,
              vtype(val), vdata(val));
-    } else if ((v & 3) == T_STR) {
+    }
+    else if ((v & 3) == T_STR)
+    {
       jsoff_t len = offtolen(v);
-      printf("STR %u [%.*s]\n", len, (int) len, js->mem + off + sizeof(v));
-    } else {
+      printf("STR %u [%.*s]\n", len, (int)len, js->mem + off + sizeof(v));
+    }
+    else
+    {
       printf("???\n");
       break;
     }
     off += esize(v);
   }
 
-  for (jsoff_t i = 0; i < js->ncbs; i++) {
+  for (jsoff_t i = 0; i < js->ncbs; i++)
+  {
     jsoff_t base = js->size + i * 3 * sizeof(jsoff_t) + sizeof(jsoff_t);
     jsoff_t o1 = loadoff(js, base), o2 = loadoff(js, base + sizeof(o1));
     printf("FFICB %u %u\n", o1, o2);
