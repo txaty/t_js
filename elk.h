@@ -16,6 +16,7 @@
 
 #pragma once
 #include <stdint.h>
+#include <stdio.h>
 
 #define JS_VERSION "2.0.8"
 

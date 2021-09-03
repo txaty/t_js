@@ -20,12 +20,14 @@
 #define NDEBUG
 #endif
 
+// #define JS_DUMP 1u
+
 #include <assert.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
+// #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -209,8 +211,19 @@ static size_t strobj(struct js *js, jsval_t obj, char *buf, size_t len)
 static size_t strnum(jsval_t value, char *buf, size_t len)
 {
   double dv = tod(value), iv;
-  const char *fmt = modf(dv, &iv) == 0.0 ? "%.17g" : "%g";
-  return snprintf(buf, len, fmt, dv);
+  // const char *fmt = modf(dv, &iv) == 0.0 ? "%.17g" : "%g";
+  // printf("check %f\n", dv);
+  // return snprintf(buf, len, fmt, dv);
+  if (modf(dv, &iv) == 0.0)
+    return snprintf(buf, len, "%d", (int)dv);
+  int tmp, tmp1, tmp2, tmp3, tmp4, tmp5;
+  tmp = (int)dv;
+  tmp1 = (int)((dv - tmp) * 10) % 10;
+  tmp2 = (int)((dv - tmp) * 100) % 10;
+  tmp3 = (int)((dv - tmp) * 1000) % 10;
+  tmp4 = (int)((dv - tmp) * 10000) % 10;
+  tmp5 = (int)((dv - tmp) * 100000) % 10;
+  return snprintf(buf, len, "%d.%d%d%d%d%d", tmp, tmp1, tmp2, tmp3, tmp4, tmp5);
 }
 
 // Return mem offset and length of the JS string
@@ -281,7 +294,7 @@ const char *js_str(struct js *js, jsval_t value)
   if (js->brk + sizeof(jsoff_t) >= js->size)
     return "";
   tostr(js, value, buf, js->size - js->brk - sizeof(jsoff_t));
-  // printf("JSSTR: %d [%s]\n", vtype(value), buf);
+  printf("JSSTR: %d [%s]\n", vtype(value), buf);
   return buf;
 }
 
