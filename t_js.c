@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "js_eng.h"
+#include "t_js.h"
 
 
 
@@ -181,20 +181,19 @@ static size_t strnum(jsval_t value, char *buf, size_t len)
   double dv = tod(value), iv;
   if (modf(dv, &iv) == 0.0)
     return snprintf(buf, len, "%d", (int)dv);
-  int int_p, fract_p, fract_p0, fract_p1;
+  int int_p, fract_p0, fract_p1;
   int_p = (int)dv;
-  fract_p = dv - int_p;
-  fract_p0 = (int)(fract_p * 10) % 10;
-  fract_p1 = (int)(fract_p * 100) % 10;
-  if (fract_p0 == 0)
+  fract_p0 = (int)((dv - int_p) * 10) % 10;
+  fract_p1 = (int)((dv - int_p) * 100) % 10;
+  if (fract_p1 == 0)
     return snprintf(buf, len, "%d.%d", int_p, fract_p0);
-  int fract_p2 = (int)(fract_p * 1000) % 10;
+  int fract_p2 = (int)((dv - int_p) * 1000) % 10;
   if (fract_p2 == 0)
     return snprintf(buf, len, "%d.%d%d", int_p, fract_p0, fract_p1);
-  int fract_p3 = (int)(fract_p * 10000) % 10;
+  int fract_p3 = (int)((dv - int_p) * 10000) % 10;
   if (fract_p3 == 0)
     return snprintf(buf, len, "%d.%d%d%d", int_p, fract_p0, fract_p1, fract_p2);
-  int fract_p4 = (int)(fract_p * 100000) % 10;
+  int fract_p4 = (int)((dv - int_p) * 100000) % 10;
   if (fract_p4 == 0)
     return snprintf(buf, len, "%d.%d%d%d%d", int_p, fract_p0, fract_p1, fract_p2, fract_p3);
   return snprintf(buf, len, "%d.%d%d%d%d%d", int_p, fract_p0, fract_p1, fract_p2, fract_p3, fract_p4);
