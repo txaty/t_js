@@ -1,33 +1,8 @@
-// Copyright (c) 2013-2021 Cesanta Software Limited
-// All rights reserved
-//
-// This software is dual-licensed: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License version 2 as
-// published by the Free Software Foundation. For the terms of this
-// license, see <http://www.gnu.org/licenses/>.
-//
-// You are free to use this software under the terms of the GNU General
-// Public License, but WITHOUT ANY WARRANTY; without even the implied
-// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU General Public License for more details.
-//
-// Alternatively, you can license this software under a commercial
-// license, please contact us at https://cesanta.com/contact.html
-
-#if defined(ARDUINO_AVR_NANO) || defined(ARDUINO_AVR_PRO) || \
-    defined(ARDUINO_AVR_UNO)
-#define JS_NOCB
-#define NDEBUG
-#endif
-
-// #define JS_DUMP 1u
-
 #include <assert.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
-// #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -211,19 +186,25 @@ static size_t strobj(struct js *js, jsval_t obj, char *buf, size_t len)
 static size_t strnum(jsval_t value, char *buf, size_t len)
 {
   double dv = tod(value), iv;
-  // const char *fmt = modf(dv, &iv) == 0.0 ? "%.17g" : "%g";
-  // printf("check %f\n", dv);
-  // return snprintf(buf, len, fmt, dv);
   if (modf(dv, &iv) == 0.0)
     return snprintf(buf, len, "%d", (int)dv);
-  int tmp, tmp1, tmp2, tmp3, tmp4, tmp5;
-  tmp = (int)dv;
-  tmp1 = (int)((dv - tmp) * 10) % 10;
-  tmp2 = (int)((dv - tmp) * 100) % 10;
-  tmp3 = (int)((dv - tmp) * 1000) % 10;
-  tmp4 = (int)((dv - tmp) * 10000) % 10;
-  tmp5 = (int)((dv - tmp) * 100000) % 10;
-  return snprintf(buf, len, "%d.%d%d%d%d%d", tmp, tmp1, tmp2, tmp3, tmp4, tmp5);
+  int int_p, fract_p, fract_p0, fract_p1;
+  int_p = (int)dv;
+  fract_p = dv - int_p;
+  fract_p0 = (int)(fract_p * 10) % 10;
+  fract_p1 = (int)(fract_p * 100) % 10;
+  if (fract_p0 == 0)
+    return snprintf(buf, len, "%d.%d", int_p, fract_p0);
+  int fract_p2 = (int)(fract_p * 1000) % 10;
+  if (fract_p2 == 0)
+    return snprintf(buf, len, "%d.%d%d", int_p, fract_p0, fract_p1);
+  int fract_p3 = (int)(fract_p * 10000) % 10;
+  if (fract_p3 == 0)
+    return snprintf(buf, len, "%d.%d%d%d", int_p, fract_p0, fract_p1, fract_p2);
+  int fract_p4 = (int)(fract_p * 100000) % 10;
+  if (fract_p4 == 0)
+    return snprintf(buf, len, "%d.%d%d%d%d", int_p, fract_p0, fract_p1, fract_p2, fract_p3);
+  return snprintf(buf, len, "%d.%d%d%d%d%d", int_p, fract_p0, fract_p1, fract_p2, fract_p3, fract_p4);
 }
 
 // Return mem offset and length of the JS string
@@ -294,7 +275,7 @@ const char *js_str(struct js *js, jsval_t value)
   if (js->brk + sizeof(jsoff_t) >= js->size)
     return "";
   tostr(js, value, buf, js->size - js->brk - sizeof(jsoff_t));
-  printf("JSSTR: %d [%s]\n", vtype(value), buf);
+  // printf("JSSTR: %d [%s]\n", vtype(value), buf);
   return buf;
 }
 
