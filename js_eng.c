@@ -6,11 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "elk.h"
+#include "js_eng.h"
 
-#ifndef JS_EXPR_MAX
-#define JS_EXPR_MAX 20
-#endif
+
 
 typedef uint32_t jsoff_t;
 
@@ -27,11 +25,6 @@ struct js
   jsoff_t tlen;     // Length of the last parsed token
   jsval_t tval;     // Holds last parsed numeric or string literal value
   jsval_t scope;    // Current scope
-#define F_NOEXEC 1  // Parse code, but not execute
-#define F_LOOP 2    // We're inside the loop
-#define F_CALL 4    // We're inside a function call
-#define F_BREAK 8   // Exit the loop
-#define F_RETURN 16 // Return has been executed
   uint8_t *mem;     // Available JS memory
   jsoff_t size;     // Memory size
   jsoff_t brk;      // Current mem usage boundary
