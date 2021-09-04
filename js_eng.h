@@ -4,6 +4,16 @@
 
 #define JS_VERSION "2.0.8"
 
+#define F_NOEXEC 1  // Parse code, but not execute
+#define F_LOOP 2    // We're inside the loop
+#define F_CALL 4    // We're inside a function call
+#define F_BREAK 8   // Exit the loop
+#define F_RETURN 16 // Return has been executed
+
+#ifndef JS_EXPR_MAX
+#define JS_EXPR_MAX 20
+#endif
+
 struct js;                // JS engine (opaque)
 typedef uint64_t jsval_t; // JS value placeholder
 
