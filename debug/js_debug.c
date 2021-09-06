@@ -1,11 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
-
-#include "js.h"
-#include "js_type.h"
+#include "js_types.h"
 #include "js_debug.h"
 
-#ifdef JS_DEBUG
+#ifdef JS_CFG_DEBUG
 void js_dump(struct js *js)
 {
   jsoff_t off = 0, v;
