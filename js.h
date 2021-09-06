@@ -11,10 +11,13 @@
 #define JS_VERSION "2.0.8"
 
 #ifndef JS_CFG_MEM_SIZE
-#define JS_CFG_MEM_SIZE 256u
+#define JS_CFG_MEM_SIZE 1024u
 #endif
 
+extern char JS_MEM[JS_CFG_MEM_SIZE];
+
 JS *js_create(void *buf, size_t len);              // Create JS instance
+JS *js_create_static();
 const char *js_str(JS *, jsval_t val);             // Stringify JS value
 jsval_t js_eval(JS *, const char *, size_t);       // Execute JS code
 jsval_t js_glob(JS *);                             // Return global object

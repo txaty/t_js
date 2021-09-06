@@ -1,19 +1,18 @@
 #include <stdio.h>
-#include <stdbool.h>
 #include "js_driver.h"
 #include "gpio.h"
 
-static void print(int num)
+void print(int num)
 {
     printf("%d\n", num);
 }
 
-static void toggle_led()
+void toggle_led()
 {
     HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 }
 
-static void set_led(bool is_on)
+void set_led(bool is_on)
 {
     if (is_on)
         HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
@@ -21,7 +20,7 @@ static void set_led(bool is_on)
         HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 }
 
-static void delay(int num)
+void delay(int num)
 {
     HAL_Delay(num);
 }

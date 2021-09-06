@@ -8,6 +8,7 @@
 #include "js.h"
 #include "js_include.h"
 
+char JS_MEM[JS_CFG_MEM_SIZE];
 
 JS *js_create(void *buf, size_t len)
 {
@@ -20,6 +21,11 @@ JS *js_create(void *buf, size_t len)
   js->size = (jsoff_t)(len - sizeof(*js)); // JS memory size
   js->scope = mkobj(js, 0);                // Create global scope
   return js;
+}
+
+JS* js_create_static()
+{
+  return js_create(JS_MEM, sizeof(JS_MEM));
 }
 
 // Stringify JS value into a free JS memory block
