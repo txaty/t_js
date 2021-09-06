@@ -73,3 +73,13 @@ jsval_t js_eval(JS *js, const char *buf, size_t len)
     len = strlen(buf);
   return js_eval_nogc(js, buf, (jsoff_t)len);
 }
+
+jsval_t js_execute_script(JS* js, const char *filename)
+{
+    char data[32 * 1024];
+    FILE *fp = fopen(filename, "rb");
+    if (!fp)
+        return 0;
+    size_t len = fread(data, 1, sizeof(data), fp);
+    return js_eval(js, data, len);
+}
