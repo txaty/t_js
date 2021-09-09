@@ -17,7 +17,7 @@
 extern char JS_MEM[JS_CFG_MEM_SIZE];
 
 JS *js_create(void *buf, size_t len);              // Create JS instance
-JS *js_create_static();
+JS *js_create_static();                            // Create JS instance with declared static memory
 const char *js_str(JS *, jsval_t val);             // Stringify JS value
 jsval_t js_eval(JS *, const char *, size_t);       // Execute JS code
 jsval_t js_glob(JS *);                             // Return global object
